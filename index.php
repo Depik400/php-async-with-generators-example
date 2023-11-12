@@ -58,10 +58,17 @@ class Loop {
     function run($endOnTaskEnd = false) {
         while(true) {
             foreach($this->tasks as $i => $task) {
-              //  of($task->)
+                $cb = null;
+              if(is_array($task)) {
+                $cb = $task[1];
+                $task = $task[0];
+              }
                 $task->next();
                 try {
-                    $task->getReturn();
+                    $retval = $task->getReturn();
+                    if($cb) {
+                        $cb($retval);
+                    }
                     unset($this->tasks[$i]);
                 } catch (\Throwable) {
                     continue;
@@ -104,9 +111,14 @@ function task1(): Generator {
     }
     return false;
 }
+
+function promise(Generator $task, callable $test) {
+    global $loop;
+    $loop->addTask([$task, $test]);
+}
 function task2(): Generator {
     $result = yield from task3();
-    echo print_r($result);
+    promise(task3(), function () {echo 'promise here' . PHP_EOL;});
     foreach(range(0,10) as $temp) {
         echo 'generator 2 = ' . $temp . PHP_EOL;
         yield;
